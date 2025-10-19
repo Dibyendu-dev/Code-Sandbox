@@ -6,7 +6,6 @@ import { useEffect } from "react";
 import { useTreeStructureStore } from "../store/treeStructureStore";
 
 export const ProjectPlayground = () => {
-
     const {projectId: projectIdFromUrl } = useParams();
 
     const { setProjectId, projectId } = useTreeStructureStore();
