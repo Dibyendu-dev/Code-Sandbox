@@ -2,7 +2,7 @@ import Docker from 'dockerode';
 
 const docker = new Docker();
 
-export const handleContainerCreate = async (projectId, socket) => {
+export const handleContainerCreate = async (projectId, terminalSocket, req, tcpSocket, head) => {
     console.log("Project id received for container create", projectId);
     try {
         const container = await docker.createContainer({
@@ -10,9 +10,16 @@ export const handleContainerCreate = async (projectId, socket) => {
             AttachStdin: true,
             AttachStdout: true,
             AttachStderr: true,
-            CMD: ['/bin/bash'],
+            Cmd: ['/bin/bash'],
             Tty: true,
             User: "sandbox",
+            Volumes: {
+                "/home/sandbox/app": {}
+            },
+            ExposedPorts: {
+                    "5173/tcp": {}
+                },
+            Env: ["HOST=0.0.0.0"],
             HostConfig: {
                 Binds: [ // mounting the project directory to the container
                     `${process.cwd()}/projects/${projectId}:/home/sandbox/app`
@@ -24,10 +31,7 @@ export const handleContainerCreate = async (projectId, socket) => {
                         }
                     ]
                 },
-                ExposedPorts: {
-                    "5173/tcp": {}
-                },
-                Env: ["HOST=0.0.0.0"]
+                
             }
         });
     
@@ -37,9 +41,25 @@ export const handleContainerCreate = async (projectId, socket) => {
 
         console.log("container started");
 
+          // Below is the place where we upgrade the connection to websocket
+        terminalSocket.handleUpgrade(req, tcpSocket, head, (establishedWSConn) => {
+            console.log("Connection upgraded to websocket");
+            terminalSocket.emit("connection", establishedWSConn, req, container);
+        });
+
     } catch(error) {
         console.log("Error while creating container", error);
     }
 
 
+}
+
+export const listContainer = async () => {
+
+    const containers = await docker.listContainers();
+    console.log("Containers", containers);
+    // PRINT PORTS ARRAY FROM ALL CONTAINER
+    containers.forEach((containerInfo) => {
+        console.log(containerInfo.Ports);
+    })
 }
